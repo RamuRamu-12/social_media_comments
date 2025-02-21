@@ -1,10 +1,7 @@
 Django
-pandas
-django-storages
-openai
-plotly
-joblib
-requests
 python-dotenv
-markdown
+openai
+pandas
+sqlalchemy
 psycopg2-binary
+markdown

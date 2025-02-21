@@ -528,19 +528,40 @@ def gen_txt_response(request):
                 f.write(chunk)
 
         df = file_to_sql(file_path, table_name, USER, PASSWORD, HOST, DATABASE)
+        # Extract only required columns and drop NaN values
+        df = df[['cleaned_comment', 'sentiment_category']].dropna()
+        print(df.shape)
+
+        # Keep only negative and neutral sentiment categories
+        df = df[df['sentiment_category'].isin(['negative', 'neutral'])]
+        print(df.head(4))
+
         query = request.POST["query"].lower()
 
-        # Extract relevant comments
-        relevant_comments = df[df['cleaned_comment'].str.contains(query, case=False, na=False)]
-        comments_text = " ".join(relevant_comments['cleaned_comment'].tolist())
-
-        # Generate insights using LLM
+        # Generate actionable insights using LLM
         prompt_eng = f"""
-            Given the following comments related to '{query}', provide actionable insights:
-            {comments_text}
-        """
+                    Based on the following comments related to '{query}', provide structured actionable insights.
+                    {query} interested in sports and its connection to extreme sports.
+                    The insights should be formatted with bullet points and clearly categorized.
+                    Don't present  like this in the final output:"Based on the cleaned comments related to 'Monster Energy', here are the structured actionable insights categorized by sentiment:".Just Give the answer directly.
+                    Don't present the comments in the final output.Just provide the actionable insights and Focus mainly on:
+                    1.Promotion and Sponsorship
+                    2.Product Varieties
+                    3.Healthy and safety
+                    4.Community and Engagement
+                    5.Availability
+                    and you can  add the more components or less components based on the {query}.
+                    - Make sure that you will use the dataset in the dataframe as 'df'.
+                    Comments:
+                    {df}
+                """
         insights = generate_code(prompt_eng)
-        return JsonResponse({"answer": markdown_to_html(insights)})
+        print(insights)
+        structured_response = (
+            "Here are some actionable insights based on your query:\n\n"
+            f"{insights}"
+        )
+        return JsonResponse({"answer": markdown_to_html(structured_response)})
 
     return HttpResponse("Invalid Request Method", status=405)
 

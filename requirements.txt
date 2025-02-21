@@ -2,11 +2,7 @@ Django
 pandas
 django-dotenv
 django-storages
-numpy
-
-
 openai
-
 joblib
 requests
 python-dotenv

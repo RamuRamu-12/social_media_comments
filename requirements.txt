@@ -1,0 +1,15 @@
+Django
+pandas
+django-dotenv
+django-storages
+numpy
+
+
+openai
+
+joblib
+requests
+python-dotenv
+markdown
+psycopg2-binary
+zoneinfo

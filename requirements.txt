@@ -3,7 +3,7 @@ pandas
 django-dotenv
 django-storages
 pmdarima
-tensorflow
+
 openai
 plotly
 scikit-learn

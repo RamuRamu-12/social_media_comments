@@ -1,6 +1,5 @@
 Django
 pandas
-django-dotenv
 django-storages
 pmdarima
 

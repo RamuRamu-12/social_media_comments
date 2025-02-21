@@ -2,7 +2,6 @@ Django
 pandas
 django-dotenv
 django-storages
-numpy
 pmdarima
 tensorflow
 openai

@@ -2,7 +2,12 @@ Django
 pandas
 django-dotenv
 django-storages
+numpy
+pmdarima
+tensorflow
 openai
+plotly
+scikit-learn
 joblib
 requests
 python-dotenv

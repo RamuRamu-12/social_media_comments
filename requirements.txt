@@ -1,8 +1,6 @@
 Django
 pandas
 django-storages
-pmdarima
-
 openai
 plotly
 joblib

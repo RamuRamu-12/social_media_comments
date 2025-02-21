@@ -6,7 +6,6 @@ pmdarima
 
 openai
 plotly
-scikit-learn
 joblib
 requests
 python-dotenv

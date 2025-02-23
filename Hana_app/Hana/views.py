@@ -529,7 +529,7 @@ def gen_txt_response(request):
 
         df = file_to_sql(file_path, table_name, USER, PASSWORD, HOST, DATABASE)
         # Extract only required columns and drop NaN values
-        df = df[['cleaned_comment', 'sentiment_category']].dropna()
+        df = df[['cleaned_comment', 'sentiment_category','category','subcategory']].dropna()
         print(df.shape)
 
         # Keep only negative and neutral sentiment categories
@@ -539,22 +539,68 @@ def gen_txt_response(request):
         query = request.POST["query"].lower()
 
         # Generate actionable insights using LLM
-        prompt_eng = f"""
-                    Based on the following comments related to '{query}', provide structured actionable insights.
-                    {query} interested in sports and its connection to extreme sports.
-                    The insights should be formatted with bullet points and clearly categorized.
-                    Don't present  like this in the final output:"Based on the cleaned comments related to 'Monster Energy', here are the structured actionable insights categorized by sentiment:".Just Give the answer directly.
-                    Don't present the comments in the final output.Just provide the actionable insights and Focus mainly on:
-                    1.Promotion and Sponsorship
-                    2.Product Varieties
-                    3.Healthy and safety
-                    4.Community and Engagement
-                    5.Availability
-                    and you can  add the more components or less components based on the {query}.
-                    - Make sure that you will use the dataset in the dataframe as 'df'.
-                    Comments:
-                    {df}
-                """
+        # prompt_eng = f"""
+        #             Based on the following comments related to '{query}', provide structured actionable insights.
+        #             {query} interested in sports and its connection to extreme sports.
+        #             The insights should be formatted with bullet points and clearly categorized.
+        #             Don't present  like this in the final output:"Based on the cleaned comments related to 'Monster Energy', here are the structured actionable insights categorized by sentiment:".Just Give the answer directly.
+        #             Don't present the comments in the final output.Just provide the actionable insights:
+        #             Strictly Do not include the below examples for every query asked by the user.Just provide the insights based on the query,category,subcategory.The below example is the only for your reference that you have to think like that.
+        #             For example, for some query you have to  focus on the below components based on the {df['category']} and {df['subcategory']}
+        #             1.Promotion and Sponsorship
+        #             2.Product Varieties
+        #             3.Healthy and safety
+        #             4.Community and Engagement
+        #             5.Availability
+        #             and you can  add the more components or less components based on the {query}.
+        #             - Make sure that you will use the dataset in the dataframe as 'df'.
+        #
+        #             Comments:
+        #             {df}
+        #         """
+        prompt_eng= f"""
+        Based on the following comments related to '{query}', provide structured, actionable insights.
+
+        Identify key themes from {df['category']} and {df['subcategory']} relevant to the user's query.
+        Specifically focus on keywords mentioned in the query (e.g., "shit
+        ," "fall sick") and derive insights to address or mitigate negative sentiment.Don't mention the  words like 'shit' and 'fallsick' in the final output.
+        The insights should be structured with bullet points and categorized appropriately based on the nature of the comments.
+        Do not include the original comments; only provide actionable recommendations.
+        Ensure that the categories are dynamically generated based on the context of the query rather than using predefined topics.
+        The dataset is provided in the dataframe as 'df'.
+        Always You can just give the headings and the information related to the headings based on the {query} and {df}.
+        Make sure that If you got any comparison related terms in the {query},then compare the issues regarding the comparable items given and produce the final output with clear comparable statements based on the {df['cleaned_comment']}. For example,if you give a comparison between monster energy and red bull,,then you can make the comparable differences with the red bull and monster energy and generate actionable insights based on {query}.
+        In Comparison,the final output should be like this:
+        Compare both the things.
+        # Monster Energy heavily sponsors extreme sports events, athletes, and teams, establishing a strong presence in this niche.
+        # Red Bull also invests in extreme sports but has a broader focus, including lifestyle and mainstream sports, potentially reaching a wider audience.
+
+
+        Do not include this in the final output:
+        'Based on the analysis of the comments related to Monster Energy, here are structured, actionable insights derived from the identified themes and keywords associated with negative sentiments, particularly focusing on terms including "shit" and "sick."'
+        
+        Note: Strictly Do not use the above example at the time of  every query procesinng.The above is just an example. Actual output should always be dynamically generated based on the query.
+              Ensure the response is not a repeated or templated output but is always fresh and query-specific.
+              Do not include the general sentiment analysis like neutral feedback,Negative feedback etc in the final output.
+
+        """
+        # prompt_eng = f"""
+        #                     Based on the following comments related to '{query}', provide structured actionable insights.
+        #                     {query} interested in sports and its connection to extreme sports.
+        #                     The insights should be formatted with bullet points and clearly categorized.
+        #                     Don't present  like this in the final output:"Based on the cleaned comments related to 'Monster Energy', here are the structured actionable insights categorized by sentiment:".Just Give the answer directly.
+        #                     Don't present the comments in the final output.Just provide the actionable insights and Focus mainly on:
+        #                     1.Promotion and Sponsorship
+        #                     2.Product Varieties
+        #                     3.Healthy and safety
+        #                     4.Community and Engagement
+        #                     5.Availability
+        #                     and you can  add the more components or less components based on the {query}.
+        #                     - Make sure that you will use the dataset in the dataframe as 'df'.
+        #                     Comments:
+        #                     {df}
+        #                 """
+
         insights = generate_code(prompt_eng)
         print(insights)
         structured_response = (

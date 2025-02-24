@@ -515,19 +515,14 @@ DATABASE = 'test'
 def gen_txt_response(request):
     if request.method == "POST":
         query = request.POST["query"].lower()
+        file = request.FILES.get('file')
         # Handle user greetings with LLM response
         greetings = {"hi", "hello", "hey", "greetings"}
         if query in greetings:
             greeting_prompt = "Respond to the user greeting in a friendly and engaging manner."
             greeting_response = generate_code(greeting_prompt)
             return JsonResponse({"answer": markdown_to_html(greeting_response)})
-        # elif query:
-        #     # Handle general topic-based queries with LLM response
-        #     topic_prompt = f"Provide an informative response about '{query}' in a structured manner."
-        #     topic_response = generate_code(topic_prompt)
-        #     return JsonResponse({"answer": markdown_to_html(topic_response)})
-        else:
-            file = request.FILES.get('file')
+        elif query and file:
             table_name = file.name.split('.')[0]
 
             # Define upload directory
@@ -554,7 +549,7 @@ def gen_txt_response(request):
             Identify key themes from {df['category']} and {df['subcategory']} relevant to the user's query.
             Specifically focus on keywords mentioned in the query (e.g., "shit
             ," "fall sick") and derive insights to address or mitigate negative sentiment.Don't mention the  words like 'shit' and 'fallsick' in the final output.
-            The insights should be structured with bullet points and categorized appropriately based on the nature of the comments.
+            The insights should be categorized appropriately based on the nature of the comments.
             Do not include the original comments; only provide actionable recommendations.
             Ensure that the categories are dynamically generated based on the context of the query rather than using predefined topics.
             The dataset is provided in the dataframe as 'df'.
@@ -582,6 +577,11 @@ def gen_txt_response(request):
                 f"{insights}"
             )
             return JsonResponse({"answer": markdown_to_html(structured_response)})
+        else:
+            # Handle general topic-based queries with LLM response
+            topic_prompt = f"Provide an informative response about '{query}' in a structured manner."
+            topic_response = generate_code(topic_prompt)
+            return JsonResponse({"answer": markdown_to_html(topic_response)})
 
     return HttpResponse("Invalid Request Method", status=405)
 

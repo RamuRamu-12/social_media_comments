@@ -529,7 +529,7 @@ def gen_txt_response(request):
 
         df = file_to_sql(file_path, table_name, USER, PASSWORD, HOST, DATABASE)
         # Extract only required columns and drop NaN values
-        df = df[['cleaned_comment', 'sentiment_category','category','subcategory']].dropna()
+        df = df[['cleaned_comment', 'sentiment_category', 'category', 'subcategory']].dropna()
         print(df.shape)
 
         # Keep only negative and neutral sentiment categories
@@ -558,7 +558,7 @@ def gen_txt_response(request):
         #             Comments:
         #             {df}
         #         """
-        prompt_eng= f"""
+        prompt_eng = f"""
         Based on the following comments related to '{query}', provide structured, actionable insights.
 
         Identify key themes from {df['category']} and {df['subcategory']} relevant to the user's query.
@@ -569,19 +569,20 @@ def gen_txt_response(request):
         Ensure that the categories are dynamically generated based on the context of the query rather than using predefined topics.
         The dataset is provided in the dataframe as 'df'.
         Always You can just give the headings and the information related to the headings based on the {query} and {df}.
+        You Strictly use the blue colour for the heading for the Final Answer.
         Make sure that If you got any comparison related terms in the {query},then compare the issues regarding the comparable items given and produce the final output with clear comparable statements based on the {df['cleaned_comment']}. For example,if you give a comparison between monster energy and red bull,,then you can make the comparable differences with the red bull and monster energy and generate actionable insights based on {query}.
         In Comparison,the final output should be like this:
         Compare both the things.
         # Monster Energy heavily sponsors extreme sports events, athletes, and teams, establishing a strong presence in this niche.
         # Red Bull also invests in extreme sports but has a broader focus, including lifestyle and mainstream sports, potentially reaching a wider audience.
-
-
+        
         Do not include this in the final output:
         'Based on the analysis of the comments related to Monster Energy, here are structured, actionable insights derived from the identified themes and keywords associated with negative sentiments, particularly focusing on terms including "shit" and "sick."'
         
         Note: Strictly Do not use the above example at the time of  every query procesinng.The above is just an example. Actual output should always be dynamically generated based on the query.
               Ensure the response is not a repeated or templated output but is always fresh and query-specific.
               Do not include the general sentiment analysis like neutral feedback,Negative feedback etc in the final output.
+             
 
         """
         # prompt_eng = f"""
@@ -612,8 +613,20 @@ def gen_txt_response(request):
     return HttpResponse("Invalid Request Method", status=405)
 
 
+import markdown
+from bs4 import BeautifulSoup
 def markdown_to_html(md_text):
-    return markdown.markdown(md_text)
+    # Convert Markdown to HTML
+    html_content = markdown.markdown(md_text)
+
+    # Parse the HTML to modify headings
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    # Apply blue color to all heading tags
+    for tag in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+        tag['style'] = "color: blue;"
+
+    return str(soup)
 
 
 def generate_code(prompt_eng):
@@ -625,6 +638,7 @@ def generate_code(prompt_eng):
         ]
     )
     return response.choices[0].message.content.strip()
+
 
 def file_to_sql(file_path, table_name, user, password, host, db_name):
     import pandas as pd
@@ -647,6 +661,7 @@ def file_to_sql(file_path, table_name, user, password, host, db_name):
 
     df.to_sql(table_name, con=engine, if_exists='replace', index=False)
     return df
+
 
 def create_mysql_engine(user, password, host, db_name):
     from sqlalchemy import create_engine, text

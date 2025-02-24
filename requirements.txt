@@ -6,3 +6,5 @@ sqlalchemy
 psycopg2-binary
 markdown
 django-cors-headers
+beautifulsoup4
+lxml

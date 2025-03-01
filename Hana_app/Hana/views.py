@@ -180,7 +180,7 @@
 #         sys.stdout = sys.__stdout__
 #
 #     return str(output)
-#
+
 #
 # def execute_query(query, user, password, host, db_name):
 #     from sqlalchemy import create_engine, text
@@ -344,10 +344,10 @@
 # #         df = file_to_sql(file_path, table_name, USER, PASSWORD, HOST, DATABASE)
 # #         print(df.head(5))
 # #
-# #         # Generate CSV metadata
-# #         csv_metadata = {"columns": df.columns.tolist()}
-# #         metadata_str = ", ".join(csv_metadata["columns"])
-# #         query = request.POST["query"]
+#         # Generate CSV metadata
+#         csv_metadata = {"columns": df.columns.tolist()}
+#         metadata_str = ", ".join(csv_metadata["columns"])
+#         query = request.POST["query"]
 # #         if not query:
 # #             return JsonResponse({"error": "No query provided"}, status=400)
 # #
@@ -427,66 +427,66 @@
 # #         else:
 # #             # Text-based prompt
 # #             print("else_condition------------------")
-# #             prompt_eng = (
-# #                 f"""
-# #                     You are a Python expert focused on answering user queries about data preprocessing and analysis. Always strictly adhere to the following rules:
-# #
-# #                     1. Data-Driven Queries:
-# #                         If the user's query is related to data processing or analysis, assume the `df` DataFrame in memory contains the actual uploaded data from the file "{file.name}" with the following columns: {metadata_str}.
-# #
-# #                         For such queries:
-# #                         - Generate Python code that directly interacts with the `df` DataFrame to provide accurate results strictly based on the data in the dataset.
-# #                         - Do not make any assumptions or provide any example outputs.
-# #                         - Ensure all answers are derived from actual calculations on the `df` DataFrame.
-# #                         - Include concise comments explaining key steps in the code.
-# #                         - Exclude any visualization, plotting, or assumptions about the data.
-# #
-# #                         Example:
-# #
-# #                         Query: "How many rows have 'Column1' > 100?"
-# #                         Response:
-# #                         ```python
-# #                         # Count rows where 'Column1' > 100
-# #                         count_rows = df[df['Column1'] > 100].shape[0]
-# #
-# #                         # Output the result
-# #                         print(count_rows)
-# #                         ```
-# #
-# #                     2. Invalid or Non-Data Queries:
-# #                         If the user's query is unrelated to data processing or analysis, or it cannot be answered using the dataset, respond with an appropriate print statement indicating the limitation. For example:
-# #
-# #                         Query: "What is AI?"
-# #                         Response:
-# #                         ```python
-# #                         print("This question is unrelated to the uploaded data. Please ask a data-specific query.")
-# #                         ```
-# #
-# #                     3. Theoretical Concepts:
-# #                         If the user asks about theoretical concepts in data science or preprocessing (e.g., normalization, standardization), respond with a concise explanation. Keep the response focused and accurate.
-# #
-# #                         Example:
-# #
-# #                         Query: "What is normalization in data preprocessing?"
-# #                         Response:
-# #                         ```python
-# #                         print("Normalization is a data preprocessing technique used to scale numeric data within a specific range, typically [0, 1], to ensure all features contribute equally to the model.")
-# #                         ```
-# #
-# #                     User query: {query}.
-# #                 """
+#             prompt_eng = (
+#                 f"""
+#                     You are a Python expert focused on answering user queries about data preprocessing and analysis. Always strictly adhere to the following rules:
+#
+#                     1. Data-Driven Queries:
+#                         If the user's query is related to data processing or analysis, assume the `df` DataFrame in memory contains the actual uploaded data from the file "{file.name}" with the following columns: {metadata_str}.
+#
+#                         For such queries:
+#                         - Generate Python code that directly interacts with the `df` DataFrame to provide accurate results strictly based on the data in the dataset.
+#                         - Do not make any assumptions or provide any example outputs.
+#                         - Ensure all answers are derived from actual calculations on the `df` DataFrame.
+#                         - Include concise comments explaining key steps in the code.
+#                         - Exclude any visualization, plotting, or assumptions about the data.
+#
+#                         Example:
+#
+#                         Query: "How many rows have 'Column1' > 100?"
+#                         Response:
+#                         ```python
+#                         # Count rows where 'Column1' > 100
+#                         count_rows = df[df['Column1'] > 100].shape[0]
+#
+#                         # Output the result
+#                         print(count_rows)
+#                         ```
+#
+#                     2. Invalid or Non-Data Queries:
+#                         If the user's query is unrelated to data processing or analysis, or it cannot be answered using the dataset, respond with an appropriate print statement indicating the limitation. For example:
+#
+#                         Query: "What is AI?"
+#                         Response:
+#                         ```python
+#                         print("This question is unrelated to the uploaded data. Please ask a data-specific query.")
+#                         ```
+#
+#                     3. Theoretical Concepts:
+#                         If the user asks about theoretical concepts in data science or preprocessing (e.g., normalization, standardization), respond with a concise explanation. Keep the response focused and accurate.
+#
+#                         Example:
+#
+#                         Query: "What is normalization in data preprocessing?"
+#                         Response:
+#                         ```python
+#                         print("Normalization is a data preprocessing technique used to scale numeric data within a specific range, typically [0, 1], to ensure all features contribute equally to the model.")
+#                         ```
+#
+#                     User query: {query}.
+#                 """
 # #             )
 # #
-# #             # Generate text-related code
-# #             code = generate_code(prompt_eng)
-# #             print("Generated code from AI (Text):")
-# #             print(code)
-# #
-# #             # Execute the generated code with the dataset
-# #             result = execute_py_code(code, df)
-# #             return JsonResponse({"answer": result}, status=200)
-# #
-# #     return HttpResponse("Invalid request method", status=405)
+#             # Generate text-related code
+#             code = generate_code(prompt_eng)
+#             print("Generated code from AI (Text):")
+#             print(code)
+#
+#             # Execute the generated code with the dataset
+#             result = execute_py_code(code, df)
+#             return JsonResponse({"answer": result}, status=200)
+#
+#     return HttpResponse("Invalid request method", status=405)
 
 
 import os
@@ -645,3 +645,329 @@ def create_mysql_engine(user, password, host, db_name):
         connection_str = f'postgresql://{user}:{password}@{host}/'
     engine = create_engine(connection_str)
     return engine
+
+
+
+#Sla breach code
+import datetime
+import numpy as np
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import os
+from django.conf import settings
+
+
+@csrf_exempt
+def process_query(request):
+    if request.method == 'POST':
+        try:
+            # Check if a file is uploaded
+            if 'file' not in request.FILES:
+                return JsonResponse({"error": "No file uploaded."}, status=400)
+
+            file = request.FILES['file']
+
+            # Check if the file is a CSV
+            if not file.name.endswith('.csv'):
+                return JsonResponse({"error": "Invalid file format. Please upload a CSV file."}, status=400)
+
+            # Read the CSV file directly from memory
+            csv_data = pd.read_csv(file)
+
+            # Process the data
+            csv_data = preprocess_data(csv_data)
+            csv_data = calculate_time_differences(csv_data)
+            csv_data = calculate_sla_breach(csv_data)
+            report_data = generate_report(csv_data)
+
+            # Save the report to the media folder
+            report_file_path = save_report_to_media(report_data)
+
+            # Return the report data as JSON
+            return JsonResponse({
+                "message": "Report generated successfully.",
+                "report_path": report_file_path,
+                "report_data": report_data.to_dict(orient='records')
+            }, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": f"Processing failed: {str(e)}"}, status=500)
+    else:
+        return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+def preprocess_data(csv_data):
+    csv_data['Historical Status - Change Date'] = pd.to_datetime(
+        csv_data['Historical Status - Change Date'], dayfirst=True, errors='coerce'
+    )
+    csv_data['Historical Status - Change Time'] = csv_data['Historical Status - Change Time'].astype(str).str.zfill(6)
+    csv_data['Historical Status - Change Time'] = pd.to_datetime(
+        csv_data['Historical Status - Change Time'], format='%H%M%S', errors='coerce'
+    ).dt.time
+    csv_data['Change Datetime'] = csv_data.apply(
+        lambda row: datetime.datetime.combine(row['Historical Status - Change Date'],
+                                              row['Historical Status - Change Time'])
+        if pd.notnull(row['Historical Status - Change Date']) and pd.notnull(row['Historical Status - Change Time'])
+        else pd.NaT,
+        axis=1
+    )
+    csv_data.sort_values(by=['Historical Status - Change Date', 'Change Datetime'], inplace=True)
+    return csv_data
+
+
+def calculate_time_differences(csv_data):
+    csv_data['Change'] = 0.0
+    business_start = datetime.time(2, 0, 0)
+    business_end = datetime.time(10, 0, 0)
+
+    def get_working_hours(t1, t2):
+        if t1 >= t2 or pd.isnull(t1) or pd.isnull(t2):
+            return 0.0
+        total = 0.0
+        current_day = t1.date()
+        last_day = t2.date()
+        while current_day <= last_day:
+            if current_day.weekday() >= 5:
+                current_day += datetime.timedelta(days=1)
+                continue
+            start_datetime = datetime.datetime.combine(current_day, business_start)
+            end_datetime = datetime.datetime.combine(current_day, business_end)
+            interval_start = max(t1, start_datetime)
+            interval_end = min(t2, end_datetime)
+            if interval_start < interval_end:
+                duration = (interval_end - interval_start).total_seconds() / 3600
+                total += duration
+            current_day += datetime.timedelta(days=1)
+        return total
+
+    grouped = csv_data.groupby('Request - ID')
+
+    for ticket_id, group in grouped:
+        group_sorted = group.sort_values('Change Datetime')
+        previous_time = None
+        changes = []
+        for index, row in group_sorted.iterrows():
+            current_time = row['Change Datetime']
+            if pd.isnull(current_time):
+                changes.append(0.0)
+                continue
+            if previous_time is not None and not pd.isnull(previous_time):
+                work_hours = get_working_hours(previous_time, current_time)
+                changes.append(work_hours)
+            else:
+                changes.append(0.0)
+            previous_time = current_time
+        csv_data.loc[group_sorted.index, 'Change'] = changes
+
+    return csv_data
+
+
+def calculate_sla_breach(csv_data):
+    sla_mapping = {"P1 - Critical": 4, "P2 - High": 8, "P3 - Normal": 45, "P4 - Low": 90}
+    csv_data['SLA Hours'] = csv_data['Request - Priority Description'].map(sla_mapping)
+    csv_data['Total Elapsed Time'] = csv_data.groupby('Request - ID')['Change'].transform('sum')
+    csv_data['Time_to_breach'] = csv_data['SLA Hours'] - csv_data['Total Elapsed Time']
+    csv_data['Breached'] = np.where(csv_data['Total Elapsed Time'] > csv_data['SLA Hours'], 'Yes', 'No')
+    csv_data['Final_Status'] = csv_data.groupby('Request - ID')['Historical Status - Status To'].transform('last')
+    return csv_data
+
+
+def generate_report(csv_data):
+    report_data = csv_data[['Request - ID', 'Request - Priority Description', 'Request - Resource Assigned To - Name',
+                            'SLA Hours', 'Total Elapsed Time', 'Time_to_breach', 'Final_Status', 'Breached']]
+    report_data.rename(columns={
+        'Request - ID': 'Ticket',
+        'Request - Priority Description': 'Priority',
+        'Request - Resource Assigned To - Name': 'Assigned To',
+        'SLA Hours': 'Allowed Duration',
+        'Total Elapsed Time': 'Total Elapsed Time',
+        'Time_to_breach': 'Time to Breach',
+        'Final_Status': 'Status',
+        'Breached': 'Breached'
+    }, inplace=True)
+    return report_data
+
+
+def save_report_to_media(report_data):
+    # Save the report to a fixed file name in the 'media' folder
+    report_file_path = os.path.join(settings.MEDIA_ROOT, 'final_report.csv')
+    report_data.to_csv(report_file_path, index=False)
+    return report_file_path
+
+
+import pandas as pd
+import datetime
+import numpy as np
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import os
+from django.conf import settings
+import io
+import sys
+import markdown
+from bs4 import BeautifulSoup
+from openai import OpenAI
+
+
+@csrf_exempt
+def sla_query(request):
+    if request.method == 'POST':
+        try:
+            # Get the query from the form data
+            query = request.POST.get("query")
+            greetings = {"hi", "hello", "hey", "greetings"}
+
+            if query in greetings:
+                greeting_prompt = "Respond to the user greeting in a friendly and engaging manner."
+                greeting_response = generate_coding_hi(greeting_prompt)
+                return JsonResponse({"answer": markdown_to_html(greeting_response)})
+            else:
+                csv_file_path = os.path.join(settings.MEDIA_ROOT, 'final_report.csv')
+
+                # Check if the file exists
+                if not os.path.exists(csv_file_path):
+                    return JsonResponse({"error": "CSV file not found. Please upload the file first."}, status=400)
+
+                df = pd.read_csv(csv_file_path)
+
+                # Generate CSV metadata
+                csv_metadata = {"columns": df.columns.tolist()}
+                metadata_str = ", ".join(csv_metadata["columns"])
+                print(metadata_str)
+
+                prompt_eng = (
+                    f"""
+                        You are a Python expert focused on answering user queries about data preprocessing. Always strictly adhere to the following rules:               
+
+                        1. Data-Related Queries:
+                            If the query is about data processing, assume the file {df.head(5)} is the data source and contains the following columns: {metadata_str}.
+
+                            Strictly work with the data as it is in the CSV file. Do not perform any implicit conversions (e.g., hours to minutes) unless explicitly requested by the user query.
+                            Example:
+                            # Count tickets where 'Time to Breach' is less than or equal to 10 hours
+                            breached_tickets_count = data[data['Time to Breach'] <= 10].shape[0]
+
+
+                            For these queries, respond with Python code only, no additional explanations.
+                            The code should:
+
+                            Load {csv_file_path} using pandas.
+                            Perform operations to directly address the query.
+                            Exclude plotting, visualization, or other unnecessary steps.
+                            Include comments for key steps in the code.
+                            Example:
+
+                            Query: "How can I filter rows where 'Column1' > 100?"
+                            Response:
+                            python
+                            Copy code
+                            import pandas as pd
+
+                            # Load the dataset
+                            data = pd.read_csv('{csv_file_path}')
+
+                            # Filter rows where 'Column1' > 100
+                            filtered_data = data[data['Column1'] > 100]
+
+                            # Output the result
+                            print(filtered_data)
+                        
+                        When returning data retrieved from the database, always aim to present it in a **tabular format** for clarity and better readability, if applicable.Generate the response in HTML table format. Use proper <table>, <thead>, <tbody>, <tr>, and <td> tags. Ensure the table structure is well-formed and include the following columns which will be compatable to React.
+                        If request is asked for tickets , please only mention Ticket,Priority,Assigned To,Allowed Duration,Total Elapsed Time,Time to Breach,Status,Breached in the response within the tabular format.
+            
+                        Never reply with: "Understood!" or similar confirmations. Always directly respond to the query following the above rules.
+
+                        User query is {query}.
+                    """
+                )
+                print("Prompt from AI:", prompt_eng)
+                code = generate_code1(prompt_eng)
+                print("Generated code from AI (Text):")
+                print(code)
+
+                # Execute the generated code with the dataset
+                result = execute_py_code(code, df)
+                return JsonResponse({"answer": result})
+
+        except Exception as e:
+            return JsonResponse({"error": f"Processing failed: {str(e)}"}, status=500)
+    else:
+        return JsonResponse({"error": "Invalid request method."}, status=405)
+
+def generate_code1(prompt_eng):
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt_eng}
+        ]
+    )
+    all_text = ""
+    for choice in response.choices:
+        message = choice.message
+        chunk_message = message.content if message else ''
+        all_text += chunk_message
+    print(all_text)
+    if "```python" in all_text:
+        code_start = all_text.find("```python") + 9
+        code_end = all_text.find("```", code_start)
+        code = all_text[code_start:code_end]
+    else:
+        code = all_text
+    return code
+
+
+
+def execute_py_code(code, df):
+    # Create a string buffer to capture the output
+    buffer = io.StringIO()
+    sys.stdout = buffer
+
+    # Create a local namespace for execution
+    local_vars = {'df': df}
+
+    try:
+        # Execute the code
+        exec(code, globals(), local_vars)
+
+        # Get the captured output
+        output = buffer.getvalue().strip()
+
+        # If there's no output, try to get the last evaluated expression
+        if not output:
+            last_line = code.strip().split('\n')[-1]
+            if not last_line.startswith(('print', 'return')):
+                output = eval(last_line, globals(), local_vars)
+                output = str(output)
+    except Exception as e:
+        output = f"Error executing code: {str(e)}"
+    finally:
+        # Reset stdout
+        sys.stdout = sys.__stdout__
+
+    return output
+
+
+def generate_coding_hi(prompt_eng):
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant providing actionable insights."},
+            {"role": "user", "content": prompt_eng}
+        ]
+    )
+    return response.choices[0].message.content.strip()
+
+
+def markdown_to_html1(md_text):
+    # Convert Markdown to HTML
+    html_content = markdown.markdown(md_text)
+
+    # Parse the HTML to modify headings
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    # Apply blue color to all heading tags
+    for tag in soup.find_all(['p']):
+        tag['style'] = "color: blue;"
+
+    return str(soup)

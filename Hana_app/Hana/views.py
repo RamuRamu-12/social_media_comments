@@ -715,49 +715,58 @@ def preprocess_data(csv_data):
     return csv_data
 
 
+# Calculate working hours between two timestamps
+def calculate_working_hours(start, end):
+    working_hours_start = datetime.time(14, 0, 0)  # 2 PM
+    working_hours_end = datetime.time(23, 0, 0)  # 11 PM
+
+    if start >= end:
+        return 0.0
+
+    total_hours = 0.0
+    current_date = start.date()
+    end_date = end.date()
+
+    while current_date <= end_date:
+        if current_date.weekday() >= 5:  # Skip weekends (Saturday = 5, Sunday = 6)
+            current_date += datetime.timedelta(days=1)
+            continue
+
+        day_start = datetime.datetime.combine(current_date, working_hours_start)
+        day_end = datetime.datetime.combine(current_date, working_hours_end)
+
+        # Adjust start and end times for the first and last day
+        interval_start = max(start, day_start)
+        interval_end = min(end, day_end)
+
+        if interval_start < interval_end:
+            total_hours += (interval_end - interval_start).total_seconds() / 3600
+
+        current_date += datetime.timedelta(days=1)
+
+    return total_hours
+
+
+# Calculate time differences and add "Change" column
 def calculate_time_differences(csv_data):
     csv_data['Change'] = 0.0
-    business_start = datetime.time(2, 0, 0)
-    business_end = datetime.time(10, 0, 0)
-
-    def get_working_hours(t1, t2):
-        if t1 >= t2 or pd.isnull(t1) or pd.isnull(t2):
-            return 0.0
-        total = 0.0
-        current_day = t1.date()
-        last_day = t2.date()
-        while current_day <= last_day:
-            if current_day.weekday() >= 5:
-                current_day += datetime.timedelta(days=1)
-                continue
-            start_datetime = datetime.datetime.combine(current_day, business_start)
-            end_datetime = datetime.datetime.combine(current_day, business_end)
-            interval_start = max(t1, start_datetime)
-            interval_end = min(t2, end_datetime)
-            if interval_start < interval_end:
-                duration = (interval_end - interval_start).total_seconds() / 3600
-                total += duration
-            current_day += datetime.timedelta(days=1)
-        return total
-
     grouped = csv_data.groupby('Request - ID')
 
     for ticket_id, group in grouped:
-        group_sorted = group.sort_values('Change Datetime')
+        group = group.sort_values(by='Change Datetime')
         previous_time = None
-        changes = []
-        for index, row in group_sorted.iterrows():
+
+        for index, row in group.iterrows():
             current_time = row['Change Datetime']
+
             if pd.isnull(current_time):
-                changes.append(0.0)
                 continue
-            if previous_time is not None and not pd.isnull(previous_time):
-                work_hours = get_working_hours(previous_time, current_time)
-                changes.append(work_hours)
-            else:
-                changes.append(0.0)
+
+            if previous_time is not None:
+                work_hours = calculate_working_hours(previous_time, current_time)
+                csv_data.at[index, 'Change'] = work_hours
+
             previous_time = current_time
-        csv_data.loc[group_sorted.index, 'Change'] = changes
 
     return csv_data
 
@@ -774,7 +783,8 @@ def calculate_sla_breach(csv_data):
 
 def generate_report(csv_data):
     report_data = csv_data[['Request - ID', 'Request - Priority Description', 'Request - Resource Assigned To - Name',
-                            'SLA Hours', 'Total Elapsed Time', 'Time_to_breach', 'Final_Status', 'Breached']]
+                            'SLA Hours', 'Total Elapsed Time', 'Time_to_breach', 'Final_Status',
+                            'Breached']].drop_duplicates()
     report_data.rename(columns={
         'Request - ID': 'Ticket',
         'Request - Priority Description': 'Priority',
@@ -786,7 +796,6 @@ def generate_report(csv_data):
         'Breached': 'Breached'
     }, inplace=True)
     return report_data
-
 
 def save_report_to_media(report_data):
     # Save the report to a fixed file name in the 'media' folder
@@ -846,6 +855,8 @@ def sla_query(request):
                             Example:
                             # Count tickets where 'Time to Breach' is less than or equal to 10 hours
                             breached_tickets_count = data[data['Time to Breach'] <= 10].shape[0]
+                            You have to consider the tickets with time to breach with the positive hours only.Donot consider the rows with  negative hours in time to breach .
+
 
 
                             For these queries, respond with Python code only, no additional explanations.

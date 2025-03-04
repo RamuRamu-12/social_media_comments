@@ -776,6 +776,14 @@ def calculate_sla_breach(csv_data):
     csv_data['SLA Hours'] = csv_data['Request - Priority Description'].map(sla_mapping)
     csv_data['Total Elapsed Time'] = csv_data.groupby('Request - ID')['Change'].transform('sum')
     csv_data['Time_to_breach'] = csv_data['SLA Hours'] - csv_data['Total Elapsed Time']
+
+    # Set Time_to_breach to zero if Breached is "Yes"
+    csv_data['Time_to_breach'] = np.where(
+        csv_data['Total Elapsed Time'] > csv_data['SLA Hours'],
+        0,
+        csv_data['Time_to_breach']
+    )
+
     csv_data['Breached'] = np.where(csv_data['Total Elapsed Time'] > csv_data['SLA Hours'], 'Yes', 'No')
     csv_data['Final_Status'] = csv_data.groupby('Request - ID')['Historical Status - Status To'].transform('last')
     return csv_data
@@ -855,10 +863,7 @@ def sla_query(request):
                             Example:
                             # Count tickets where 'Time to Breach' is less than or equal to 10 hours
                             breached_tickets_count = data[data['Time to Breach'] <= 10].shape[0]
-                            You have to consider the tickets with time to breach with the positive hours only.Donot consider the rows with  negative hours in time to breach .
-
-
-
+                            
                             For these queries, respond with Python code only, no additional explanations.
                             The code should:
 

@@ -711,7 +711,29 @@ def preprocess_data(csv_data):
         else pd.NaT,
         axis=1
     )
+
+    # Define the allowed status transitions
+    allowed_transitions = [
+        ("Forwarded", "Assigned"),
+        ("Forwarded", "Work in progress"),
+        ("Assigned", "Work in progress"),
+        ("Work in progress", "Suspended"),
+        ("Work in progress", "Solved"),
+        ("Suspended", "Solved"),
+        ("Forwarded", "Suspended")
+    ]
+
+    # Filter the data to include only the allowed transitions
+    csv_data = csv_data[
+        csv_data.apply(lambda row: (row['Historical Status - Status From'],
+                                    row['Historical Status - Status To']) in allowed_transitions, axis=1)
+    ]
+
+    # Sort the data by 'Historical Status - Change Date' and 'Change Datetime'
     csv_data.sort_values(by=['Historical Status - Change Date', 'Change Datetime'], inplace=True)
+
+    print(csv_data.head(5))
+    print(csv_data.columns)
     return csv_data
 
 
@@ -721,9 +743,9 @@ def calculate_working_hours(start, end):
     working_hours_end = datetime.time(23, 0, 0)  # 11 PM
 
     if start >= end:
-        return 0.0
+        return 0
 
-    total_hours = 0.0
+    total_hours = 0
     current_date = start.date()
     end_date = end.date()
 
@@ -749,7 +771,7 @@ def calculate_working_hours(start, end):
 
 # Calculate time differences and add "Change" column
 def calculate_time_differences(csv_data):
-    csv_data['Change'] = 0.0
+    csv_data['Change'] = 0
     grouped = csv_data.groupby('Request - ID')
 
     for ticket_id, group in grouped:
@@ -774,8 +796,8 @@ def calculate_time_differences(csv_data):
 def calculate_sla_breach(csv_data):
     sla_mapping = {"P1 - Critical": 4, "P2 - High": 8, "P3 - Normal": 45, "P4 - Low": 90}
     csv_data['SLA Hours'] = csv_data['Request - Priority Description'].map(sla_mapping)
-    csv_data['Total Elapsed Time'] = csv_data.groupby('Request - ID')['Change'].transform('sum')
-    csv_data['Time_to_breach'] = csv_data['SLA Hours'] - csv_data['Total Elapsed Time']
+    csv_data['Total Elapsed Time'] = csv_data.groupby('Request - ID')['Change'].transform('sum').astype(int)
+    csv_data['Time_to_breach'] = csv_data['SLA Hours'] - csv_data['Total Elapsed Time'].astype(int)
 
     # Set Time_to_breach to zero if Breached is "Yes"
     csv_data['Time_to_breach'] = np.where(
@@ -825,6 +847,12 @@ import markdown
 from bs4 import BeautifulSoup
 from openai import OpenAI
 
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import os
+import pandas as pd
+from django.conf import settings
+
 
 @csrf_exempt
 def sla_query(request):
@@ -852,6 +880,11 @@ def sla_query(request):
                 metadata_str = ", ".join(csv_metadata["columns"])
                 print(metadata_str)
 
+                # Retrieve or initialize memory from the session
+                if 'memory' not in request.session:
+                    request.session['memory'] = []
+
+                # Prepare the prompt with memory
                 prompt_eng = (
                     f"""
                         You are a Python expert focused on answering user queries about data preprocessing. Always strictly adhere to the following rules:               
@@ -863,7 +896,8 @@ def sla_query(request):
                             Example:
                             # Count tickets where 'Time to Breach' is less than or equal to 10 hours
                             breached_tickets_count = data[data['Time to Breach'] <= 10].shape[0]
-                            
+                            You have to consider the tickets with time to breach with the positive hours  that should be greater than zero only.Donot consider the rows with  zero hours in time to breach
+
                             For these queries, respond with Python code only, no additional explanations.
                             The code should:
 
@@ -887,17 +921,22 @@ def sla_query(request):
 
                             # Output the result
                             print(filtered_data)
-                        
+
                         When returning data retrieved from the database, always aim to present it in a **tabular format** for clarity and better readability, if applicable.Generate the response in HTML table format. Use proper <table>, <thead>, <tbody>, <tr>, and <td> tags. Ensure the table structure is well-formed and include the following columns which will be compatable to React.
                         If request is asked for tickets , please only mention Ticket,Priority,Assigned To,Allowed Duration,Total Elapsed Time,Time to Breach,Status,Breached in the response within the tabular format.
-            
+
                         Never reply with: "Understood!" or similar confirmations. Always directly respond to the query following the above rules.
 
                         User query is {query}.
                     """
                 )
-                print("Prompt from AI:", prompt_eng)
-                code = generate_code1(prompt_eng)
+                # Generate code using memory
+                code, memory = generate_code1(prompt_eng, request.session['memory'])
+
+                # Update the session memory
+                request.session['memory'] = memory
+                request.session.modified = True
+
                 print("Generated code from AI (Text):")
                 print(code)
 
@@ -910,27 +949,41 @@ def sla_query(request):
     else:
         return JsonResponse({"error": "Invalid request method."}, status=405)
 
-def generate_code1(prompt_eng):
+
+def generate_code1(prompt_eng, memory=None):
+    if memory is None:
+        memory = []
+
+    # Add the user's prompt to the memory
+    memory.append({"role": "user", "content": prompt_eng})
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt_eng}
+            *memory  # Include the conversation history
         ]
     )
+
     all_text = ""
     for choice in response.choices:
         message = choice.message
         chunk_message = message.content if message else ''
         all_text += chunk_message
+
     print(all_text)
+
     if "```python" in all_text:
         code_start = all_text.find("```python") + 9
         code_end = all_text.find("```", code_start)
         code = all_text[code_start:code_end]
     else:
         code = all_text
-    return code
+
+    # Add the assistant's response to the memory
+    memory.append({"role": "assistant", "content": all_text})
+
+    return code, memory
 
 
 
@@ -966,7 +1019,7 @@ def execute_py_code(code, df):
 
 def generate_coding_hi(prompt_eng):
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "You are a helpful assistant providing actionable insights."},
             {"role": "user", "content": prompt_eng}

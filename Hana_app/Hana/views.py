@@ -676,8 +676,9 @@ def process_query(request):
             csv_data = pd.read_csv(file)
 
             # Process the data
-            csv_data = preprocess_data(csv_data)
-            csv_data = calculate_time_differences(csv_data)
+            sorted_data = preprocess_data(csv_data)
+            print(len(sorted_data))
+            csv_data = calculate_time_differences(sorted_data)
             csv_data = calculate_sla_breach(csv_data)
             report_data = generate_report(csv_data)
 
@@ -697,14 +698,23 @@ def process_query(request):
         return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
+import pandas as pd
+import datetime
+import numpy as np
+
 def preprocess_data(csv_data):
+    # Convert 'Historical Status - Change Date' to datetime
     csv_data['Historical Status - Change Date'] = pd.to_datetime(
         csv_data['Historical Status - Change Date'], dayfirst=True, errors='coerce'
     )
+
+    # Convert 'Historical Status - Change Time' to a 6-digit string and then to time
     csv_data['Historical Status - Change Time'] = csv_data['Historical Status - Change Time'].astype(str).str.zfill(6)
     csv_data['Historical Status - Change Time'] = pd.to_datetime(
         csv_data['Historical Status - Change Time'], format='%H%M%S', errors='coerce'
     ).dt.time
+
+    # Combine date and time into a single datetime column
     csv_data['Change Datetime'] = csv_data.apply(
         lambda row: datetime.datetime.combine(row['Historical Status - Change Date'],
                                               row['Historical Status - Change Time'])
@@ -713,29 +723,22 @@ def preprocess_data(csv_data):
         axis=1
     )
 
-    # Define the allowed status transitions
-    allowed_transitions = [
-        ("Forwarded", "Assigned"),
-        ("Forwarded", "Work in progress"),
-        ("Assigned", "Work in progress"),
-        ("Work in progress", "Suspended"),
-        ("Work in progress", "Solved"),
-        ("Suspended", "Solved"),
-        ("Forwarded", "Suspended")
-    ]
+    # # Sort the data by 'Historical Status - Change Date' and 'Change Datetime'
+    # csv_data.sort_values(by=['Historical Status - Change Date', 'Change Datetime'], inplace=True)
 
-    # Filter the data to include only the allowed transitions
-    csv_data = csv_data[
-        csv_data.apply(lambda row: (row['Historical Status - Status From'],
-                                    row['Historical Status - Status To']) in allowed_transitions, axis=1)
-    ]
+    # Group the data by the 4th column (index 3) and sort each group by datetime
+    grouped_data = csv_data.groupby(csv_data['Request - ID'])
 
-    # Sort the data by 'Historical Status - Change Date' and 'Change Datetime'
-    csv_data.sort_values(by=['Historical Status - Change Date', 'Change Datetime'], inplace=True)
+    sorted_groups = []
+    for _, group in grouped_data:
+        group = group.sort_values(by=['Historical Status - Change Date', 'Change Datetime'])
+        sorted_groups.append(group)
 
-    print(csv_data.head(5))
-    print(csv_data.columns)
-    return csv_data
+    # Concatenate the sorted groups back into a single DataFrame
+    sorted_data = pd.concat(sorted_groups)
+    print(sorted_data[['Request - ID', 'Historical Status - Change Date', 'Change Datetime']].head(20))
+
+    return sorted_data
 
 
 # Calculate working hours between two timestamps
@@ -772,24 +775,40 @@ def calculate_working_hours(start, end):
 
 # Calculate time differences and add "Change" column
 def calculate_time_differences(csv_data):
+    # Initialize the 'Change' column with 0
+    print(len(csv_data))
     csv_data['Change'] = 0
-    grouped = csv_data.groupby('Request - ID')
 
-    for ticket_id, group in grouped:
-        group = group.sort_values(by='Change Datetime')
-        previous_time = None
+    # Iterate through the DataFrame, which is already grouped and sorted
+    previous_request_id = None
+    previous_time = None
 
-        for index, row in group.iterrows():
-            current_time = row['Change Datetime']
+    for index, row in csv_data.iterrows():
+        current_request_id = row['Request - ID']
+        current_time = row['Change Datetime']
 
-            if pd.isnull(current_time):
-                continue
+        # Skip if the current time is null
+        if pd.isnull(current_time):
+            continue
 
-            if previous_time is not None:
-                work_hours = calculate_working_hours(previous_time, current_time)
-                csv_data.at[index, 'Change'] = work_hours
+        # If the request ID changes, reset the previous time
+        if current_request_id != previous_request_id:
+            previous_time = None
 
-            previous_time = current_time
+        # Calculate the time difference if there is a previous time
+        if previous_time is not None:
+            work_hours = calculate_working_hours(previous_time, current_time)
+            csv_data.at[index, 'Change'] = work_hours
+
+        # Update the previous time and request ID
+        previous_time = current_time
+        previous_request_id = current_request_id
+
+    # Print debug information
+    print("at_calculate_time_difference")
+    print(csv_data.columns)
+    print(csv_data.shape)
+    print(csv_data[['Request - ID', 'Historical Status - Change Date', 'Change Datetime','Change']].head(20))
 
     return csv_data
 
@@ -809,13 +828,76 @@ def calculate_sla_breach(csv_data):
 
     csv_data['Breached'] = np.where(csv_data['Total Elapsed Time'] > csv_data['SLA Hours'], 'Yes', 'No')
     csv_data['Final_Status'] = csv_data.groupby('Request - ID')['Historical Status - Status To'].transform('last')
+    print("at_calculate_sla_breach")
+    print(csv_data.head(20))
+    print(csv_data.shape)
     return csv_data
 
 
+import pandas as pd
+
+
+def parse_date_time(date_str, time_str):
+    """Parses and combines date and time strings into a datetime object."""
+    return pd.to_datetime(f"{date_str} {time_str}", errors='coerce')
+
+import itertools
+import pandas as pd
+from datetime import datetime
+
+
 def generate_report(csv_data):
-    report_data = csv_data[['Request - ID', 'Request - Priority Description', 'Request - Resource Assigned To - Name',
-                            'SLA Hours', 'Total Elapsed Time', 'Time_to_breach', 'Final_Status',
-                            'Breached']].drop_duplicates()
+    ticket_groups = {}
+
+    for _, row in csv_data.iterrows():
+        ticket_id = row['Request - ID']
+        status_from = row['Historical Status - Status From']
+        status_to = row['Historical Status - Status To']
+        date = parse_date_time(row['Historical Status - Change Date'], row['Historical Status - Change Time'])
+
+        if ticket_id not in ticket_groups:
+            ticket_groups[ticket_id] = []
+
+        ticket_groups[ticket_id].append({
+            'row': row,
+            'date': date,
+            'statusFrom': status_from,
+            'statusTo': status_to
+        })
+
+    print(len(ticket_groups))
+
+    # Extract first record from each ticket group
+    filtered_records = []
+    for records in ticket_groups.values():
+        if records:
+            filtered_records.append(records[-1]['row'])  # Append only the last record from each group
+
+    # Convert to DataFrame
+    filtered_data = pd.DataFrame(filtered_records)
+
+    allowed_transitions = {
+        ("Forwarded", "Assigned"),
+        ("Forwarded", "Work in progress"),
+        ("Assigned", "Work in progress"),
+        ("Work in progress", "Suspended"),
+        ("Work in progress", "Solved"),
+        ("Suspended", "Solved"),
+        ("Forwarded", "Suspended")
+    }
+
+    # Filter records based on allowed transitions
+    filtered_data = filtered_data[
+        filtered_data[['Historical Status - Status From', 'Historical Status - Status To']]
+        .apply(tuple, axis=1).isin(allowed_transitions)
+    ]
+
+    # Prepare final report data
+    report_data = filtered_data[[
+        'Request - ID', 'Request - Priority Description', 'Request - Resource Assigned To - Name',
+        'SLA Hours', 'Total Elapsed Time', 'Time_to_breach', 'Final_Status', 'Breached'
+    ]].drop_duplicates()
+
     report_data.rename(columns={
         'Request - ID': 'Ticket',
         'Request - Priority Description': 'Priority',
@@ -826,6 +908,8 @@ def generate_report(csv_data):
         'Final_Status': 'Status',
         'Breached': 'Breached'
     }, inplace=True)
+
+    print("Final unique records:", report_data.shape)
     return report_data
 
 

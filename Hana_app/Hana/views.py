@@ -560,15 +560,15 @@ def gen_txt_response(request):
             Compare both the things.
             # Monster Energy heavily sponsors extreme sports events, athletes, and teams, establishing a strong presence in this niche.
             # Red Bull also invests in extreme sports but has a broader focus, including lifestyle and mainstream sports, potentially reaching a wider audience.
-            
+
             Do not include this in the final output:
             'Based on the analysis of the comments related to Monster Energy, here are structured, actionable insights derived from the identified themes and keywords associated with negative sentiments, particularly focusing on terms including "shit" and "sick."'
-            
+
             Note: Strictly Do not use the above example at the time of  every query procesinng.The above is just an example. Actual output should always be dynamically generated based on the query.
                   Ensure the response is not a repeated or templated output but is always fresh and query-specific.
                   Do not include the general sentiment analysis like neutral feedback,Negative feedback etc in the final output.
-                 
-    
+
+
             """
             insights = generate_code(prompt_eng)
             print(insights)
@@ -588,6 +588,8 @@ def gen_txt_response(request):
 
 import markdown
 from bs4 import BeautifulSoup
+
+
 def markdown_to_html(md_text):
     # Convert Markdown to HTML
     html_content = markdown.markdown(md_text)
@@ -647,8 +649,7 @@ def create_mysql_engine(user, password, host, db_name):
     return engine
 
 
-
-#Sla breach code
+# Sla breach code
 import datetime
 import numpy as np
 from django.http import JsonResponse
@@ -827,6 +828,7 @@ def generate_report(csv_data):
     }, inplace=True)
     return report_data
 
+
 def save_report_to_media(report_data):
     # Save the report to a fixed file name in the 'media' folder
     report_file_path = os.path.join(settings.MEDIA_ROOT, 'final_report.csv')
@@ -846,12 +848,6 @@ import sys
 import markdown
 from bs4 import BeautifulSoup
 from openai import OpenAI
-
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import os
-import pandas as pd
-from django.conf import settings
 
 
 @csrf_exempt
@@ -880,11 +876,6 @@ def sla_query(request):
                 metadata_str = ", ".join(csv_metadata["columns"])
                 print(metadata_str)
 
-                # Retrieve or initialize memory from the session
-                if 'memory' not in request.session:
-                    request.session['memory'] = []
-
-                # Prepare the prompt with memory
                 prompt_eng = (
                     f"""
                         You are a Python expert focused on answering user queries about data preprocessing. Always strictly adhere to the following rules:               
@@ -896,7 +887,10 @@ def sla_query(request):
                             Example:
                             # Count tickets where 'Time to Breach' is less than or equal to 10 hours
                             breached_tickets_count = data[data['Time to Breach'] <= 10].shape[0]
-                            You have to consider the tickets with time to breach with the positive hours  that should be greater than zero only.Donot consider the rows with  zero hours in time to breach
+                            If the query given to you is somewhat meaningless also,,try to analyze the important content in the query and generate the response based on the important content.
+                            
+                            
+
 
                             For these queries, respond with Python code only, no additional explanations.
                             The code should:
@@ -930,13 +924,8 @@ def sla_query(request):
                         User query is {query}.
                     """
                 )
-                # Generate code using memory
-                code, memory = generate_code1(prompt_eng, request.session['memory'])
-
-                # Update the session memory
-                request.session['memory'] = memory
-                request.session.modified = True
-
+                print("Prompt from AI:", prompt_eng)
+                code = generate_code1(prompt_eng)
                 print("Generated code from AI (Text):")
                 print(code)
 
@@ -950,41 +939,27 @@ def sla_query(request):
         return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
-def generate_code1(prompt_eng, memory=None):
-    if memory is None:
-        memory = []
-
-    # Add the user's prompt to the memory
-    memory.append({"role": "user", "content": prompt_eng})
-
+def generate_code1(prompt_eng):
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            *memory  # Include the conversation history
+            {"role": "user", "content": prompt_eng}
         ]
     )
-
     all_text = ""
     for choice in response.choices:
         message = choice.message
         chunk_message = message.content if message else ''
         all_text += chunk_message
-
     print(all_text)
-
     if "```python" in all_text:
         code_start = all_text.find("```python") + 9
         code_end = all_text.find("```", code_start)
         code = all_text[code_start:code_end]
     else:
         code = all_text
-
-    # Add the assistant's response to the memory
-    memory.append({"role": "assistant", "content": all_text})
-
-    return code, memory
-
+    return code
 
 
 def execute_py_code(code, df):
@@ -1019,7 +994,7 @@ def execute_py_code(code, df):
 
 def generate_coding_hi(prompt_eng):
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4",
         messages=[
             {"role": "system", "content": "You are a helpful assistant providing actionable insights."},
             {"role": "user", "content": prompt_eng}

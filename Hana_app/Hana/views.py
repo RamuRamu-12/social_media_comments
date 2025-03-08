@@ -723,8 +723,6 @@ def preprocess_data(csv_data):
         axis=1
     )
 
-    # # Sort the data by 'Historical Status - Change Date' and 'Change Datetime'
-    # csv_data.sort_values(by=['Historical Status - Change Date', 'Change Datetime'], inplace=True)
 
     # Group the data by the 4th column (index 3) and sort each group by datetime
     grouped_data = csv_data.groupby(csv_data['Request - ID'])
@@ -740,76 +738,138 @@ def preprocess_data(csv_data):
 
     return sorted_data
 
+#New logic
+import pandas as pd
+import datetime
 
-# Calculate working hours between two timestamps
+
 def calculate_working_hours(start, end):
     working_hours_start = datetime.time(14, 0, 0)  # 2 PM
     working_hours_end = datetime.time(23, 0, 0)  # 11 PM
 
     if start >= end:
-        return 0
+        return 0.0
 
-    total_hours = 0
+    total_hours = 0.0
     current_date = start.date()
     end_date = end.date()
 
     while current_date <= end_date:
-        if current_date.weekday() >= 5:  # Skip weekends (Saturday = 5, Sunday = 6)
+        if current_date.weekday() >= 5:  # Skip weekends (Saturday=5, Sunday=6)
             current_date += datetime.timedelta(days=1)
             continue
 
         day_start = datetime.datetime.combine(current_date, working_hours_start)
         day_end = datetime.datetime.combine(current_date, working_hours_end)
 
-        # Adjust start and end times for the first and last day
+        # Adjust interval_start and interval_end within the current day's working hours
         interval_start = max(start, day_start)
         interval_end = min(end, day_end)
 
         if interval_start < interval_end:
-            total_hours += (interval_end - interval_start).total_seconds() / 3600
+            delta = interval_end - interval_start
+            total_hours += delta.total_seconds() / 3600
 
         current_date += datetime.timedelta(days=1)
 
     return total_hours
 
 
-# Calculate time differences and add "Change" column
 def calculate_time_differences(csv_data):
-    # Initialize the 'Change' column with 0
-    print(len(csv_data))
-    csv_data['Change'] = 0
+    # Initialize 'Change' column with 0.0 (float type)
+    csv_data['Change'] = 0.0
 
-    # Iterate through the DataFrame, which is already grouped and sorted
-    previous_request_id = None
-    previous_time = None
+    # Ensure 'Change Datetime' is in datetime format
+    if not pd.api.types.is_datetime64_any_dtype(csv_data['Change Datetime']):
+        csv_data['Change Datetime'] = pd.to_datetime(csv_data['Change Datetime'])
 
-    for index, row in csv_data.iterrows():
-        current_request_id = row['Request - ID']
-        current_time = row['Change Datetime']
+    # Group by 'Request - ID' and process each group
+    for request_id, group in csv_data.groupby('Request - ID'):
+        # Sort the group by 'Change Datetime'
+        sorted_group = group.sort_values('Change Datetime')
+        previous_time = None
 
-        # Skip if the current time is null
-        if pd.isnull(current_time):
-            continue
+        for index, row in sorted_group.iterrows():
+            current_time = row['Change Datetime']
 
-        # If the request ID changes, reset the previous time
-        if current_request_id != previous_request_id:
-            previous_time = None
+            if pd.isnull(current_time):
+                csv_data.at[index, 'Change'] = 0.0
+                continue
 
-        # Calculate the time difference if there is a previous time
-        if previous_time is not None:
-            work_hours = calculate_working_hours(previous_time, current_time)
-            csv_data.at[index, 'Change'] = work_hours
+            is_weekend = current_time.weekday() >= 5
 
-        # Update the previous time and request ID
-        previous_time = current_time
-        previous_request_id = current_request_id
+            if previous_time is None:
+                # Handle first record in the group
+                if is_weekend:
+                    csv_data.at[index, 'Change'] = 0.0
+                else:
+                    # Check if current time is within working hours
+                    if current_time.time() >= datetime.time(14, 0, 0):
+                        start_of_day = current_time.replace(hour=14, minute=0, second=0, microsecond=0)
+                        work_hours = calculate_working_hours(start_of_day, current_time)
+                    else:
+                        work_hours = 0.0
+                    csv_data.at[index, 'Change'] = work_hours
+                previous_time = current_time
+            else:
+                # Handle subsequent records
+                work_hours = calculate_working_hours(previous_time, current_time)
+                csv_data.at[index, 'Change'] = work_hours
+                previous_time = current_time
+
+    # Convert to total minutes as integer if needed
+    # csv_data['Change'] = (csv_data['Change'] * 60).astype(int)
+    filtered_data = csv_data[csv_data['Request - ID'] == 'A3033017L']
+
+    # Select the required columns
+    required_columns = [
+        'Request - ID',
+        'Historical Status - Change Date',
+        'Change Datetime',
+        'Change',
+        'Historical Status - Status From',
+        'Historical Status - Status To'
+    ]
+
+    # Print the first 20 rows of the filtered data
+    print(filtered_data[required_columns])
+
+
+    allowed_transitions = {
+        ("Forwarded", "Assigned"),
+        ("Forwarded", "Work in progress"),
+        ("Assigned", "Work in progress"),
+        ("Work in progress", "Suspended"),
+        ("Work in progress", "Solved"),
+        ("Suspended", "Solved"),
+        ("Forwarded", "Suspended")
+    }
+
+    # Filter records based on allowed transitions
+    csv_data= csv_data[
+        csv_data[['Historical Status - Status From', 'Historical Status - Status To']]
+        .apply(tuple, axis=1).isin(allowed_transitions)
+    ]
 
     # Print debug information
     print("at_calculate_time_difference")
-    print(csv_data.columns)
     print(csv_data.shape)
-    print(csv_data[['Request - ID', 'Historical Status - Change Date', 'Change Datetime','Change']].head(20))
+    # print(csv_data[['Request - ID', 'Historical Status - Change Date', 'Change Datetime', 'Change','Historical Status - Status From','Historical Status - Status To']].head(20))
+    print("-------------------------------------------------------")
+    filtered_data = csv_data[csv_data['Request - ID'] == 'A3033017L']
 
+    # Select the required columns
+    required_columns = [
+        'Request - ID',
+        'Historical Status - Change Date',
+        'Change Datetime',
+        'Change',
+        'Historical Status - Status From',
+        'Historical Status - Status To'
+    ]
+
+    # Print the first 20 rows of the filtered data
+    print(filtered_data[required_columns])
     return csv_data
 
 
@@ -831,6 +891,7 @@ def calculate_sla_breach(csv_data):
     print("at_calculate_sla_breach")
     print(csv_data.head(20))
     print(csv_data.shape)
+
     return csv_data
 
 
@@ -875,22 +936,8 @@ def generate_report(csv_data):
 
     # Convert to DataFrame
     filtered_data = pd.DataFrame(filtered_records)
+    print(filtered_data.head(10))
 
-    allowed_transitions = {
-        ("Forwarded", "Assigned"),
-        ("Forwarded", "Work in progress"),
-        ("Assigned", "Work in progress"),
-        ("Work in progress", "Suspended"),
-        ("Work in progress", "Solved"),
-        ("Suspended", "Solved"),
-        ("Forwarded", "Suspended")
-    }
-
-    # Filter records based on allowed transitions
-    filtered_data = filtered_data[
-        filtered_data[['Historical Status - Status From', 'Historical Status - Status To']]
-        .apply(tuple, axis=1).isin(allowed_transitions)
-    ]
 
     # Prepare final report data
     report_data = filtered_data[[
@@ -972,10 +1019,7 @@ def sla_query(request):
                             # Count tickets where 'Time to Breach' is less than or equal to 10 hours
                             breached_tickets_count = data[data['Time to Breach'] <= 10].shape[0]
                             If the query given to you is somewhat meaningless also,,try to analyze the important content in the query and generate the response based on the important content.
-                            
-                            
-
-
+                            b
                             For these queries, respond with Python code only, no additional explanations.
                             The code should:
 

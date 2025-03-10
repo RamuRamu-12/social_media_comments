@@ -1016,7 +1016,7 @@ def sla_query(request):
 
                             Strictly work with the data as it is in the CSV file. Do not perform any implicit conversions (e.g., hours to minutes) unless explicitly requested by the user query.
                             Example:
-                            # Count tickets where 'Time to Breach(in Hours)' is less than or equal to 10 hours
+                            #Give me the count of tickets which will be breached in 10 hours
                             breached_tickets_count = data[data['Time to Breach(in Hours)'] <= 10].shape[0]
                             If the query given to you is somewhat meaningless also,,try to analyze the important content in the query and generate the response based on the query.
                             For these queries, respond with Python code only, no additional explanations.

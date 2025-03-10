@@ -949,9 +949,9 @@ def generate_report(csv_data):
         'Request - ID': 'Ticket',
         'Request - Priority Description': 'Priority',
         'Request - Resource Assigned To - Name': 'Assigned To',
-        'SLA Hours': 'Allowed Duration',
-        'Total Elapsed Time': 'Total Elapsed Time',
-        'Time_to_breach': 'Time to Breach',
+        'SLA Hours': 'Allowed Duration(in Hours)',
+        'Total Elapsed Time': 'Total Elapsed Time(in Hours)',
+        'Time_to_breach': 'Time to Breach(in Hours)',
         'Final_Status': 'Status',
         'Breached': 'Breached'
     }, inplace=True)
@@ -1012,17 +1012,18 @@ def sla_query(request):
                         You are a Python expert focused on answering user queries about data preprocessing. Always strictly adhere to the following rules:               
 
                         1. Data-Related Queries:
-                            If the query is about data processing, assume the file {df.head(5)} is the data source and contains the following columns: {metadata_str}.
+                            If the query is about data processing, assume the file {df.head(3)} is the data source and contains the following columns: {metadata_str}.
 
                             Strictly work with the data as it is in the CSV file. Do not perform any implicit conversions (e.g., hours to minutes) unless explicitly requested by the user query.
                             Example:
                             # Count tickets where 'Time to Breach' is less than or equal to 10 hours
                             breached_tickets_count = data[data['Time to Breach'] <= 10].shape[0]
-                            If the query given to you is somewhat meaningless also,,try to analyze the important content in the query and generate the response based on the important content.
-                            b
+                            If the query given to you is somewhat meaningless also,,try to analyze the important content in the query and generate the response based on the query.
                             For these queries, respond with Python code only, no additional explanations.
+                            
+                            If the user asks about the breached tickets don't consider the 'Status' column as breached, always consider the 'Breached' column as Yes.
+                            
                             The code should:
-
                             Load {csv_file_path} using pandas.
                             Perform operations to directly address the query.
                             Exclude plotting, visualization, or other unnecessary steps.
@@ -1045,7 +1046,7 @@ def sla_query(request):
                             print(filtered_data)
 
                         When returning data retrieved from the database, always aim to present it in a **tabular format** for clarity and better readability, if applicable.Generate the response in HTML table format. Use proper <table>, <thead>, <tbody>, <tr>, and <td> tags. Ensure the table structure is well-formed and include the following columns which will be compatable to React.
-                        If request is asked for tickets , please only mention Ticket,Priority,Assigned To,Allowed Duration,Total Elapsed Time,Time to Breach,Status,Breached in the response within the tabular format.
+                        If request is asked for tickets or breached tickets or list of tickets , please only mention Ticket,Priority,Assigned To,Allowed Duration,Total Elapsed Time,Time to Breach,Status,Breached in the response within the tabular format.
 
                         Never reply with: "Understood!" or similar confirmations. Always directly respond to the query following the above rules.
 

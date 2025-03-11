@@ -772,7 +772,7 @@ def calculate_working_hours(start, end):
 
         current_date += datetime.timedelta(days=1)
 
-    return total_hours
+    return round(total_hours,2)
 
 
 def calculate_time_differences(csv_data):
@@ -819,21 +819,6 @@ def calculate_time_differences(csv_data):
 
     # Convert to total minutes as integer if needed
     # csv_data['Change'] = (csv_data['Change'] * 60).astype(int)
-    filtered_data = csv_data[csv_data['Request - ID'] == 'A3033017L']
-
-    # Select the required columns
-    required_columns = [
-        'Request - ID',
-        'Historical Status - Change Date',
-        'Change Datetime',
-        'Change',
-        'Historical Status - Status From',
-        'Historical Status - Status To'
-    ]
-
-    # Print the first 20 rows of the filtered data
-    print(filtered_data[required_columns])
-
 
     allowed_transitions = {
         ("Forwarded", "Assigned"),
@@ -876,8 +861,8 @@ def calculate_time_differences(csv_data):
 def calculate_sla_breach(csv_data):
     sla_mapping = {"P1 - Critical": 4, "P2 - High": 8, "P3 - Normal": 45, "P4 - Low": 90}
     csv_data['SLA Hours'] = csv_data['Request - Priority Description'].map(sla_mapping)
-    csv_data['Total Elapsed Time'] = csv_data.groupby('Request - ID')['Change'].transform('sum').astype(int)
-    csv_data['Time_to_breach'] = csv_data['SLA Hours'] - csv_data['Total Elapsed Time'].astype(int)
+    csv_data['Total Elapsed Time'] = csv_data.groupby('Request - ID')['Change'].transform('sum')
+    csv_data['Time_to_breach'] = csv_data['SLA Hours'] - csv_data['Total Elapsed Time']
 
     # Set Time_to_breach to zero if Breached is "Yes"
     csv_data['Time_to_breach'] = np.where(
@@ -1016,7 +1001,6 @@ def sla_query(request):
 
                             Strictly work with the data as it is in the CSV file. Do not perform any implicit conversions (e.g., hours to minutes) unless explicitly requested by the user query.
                             Example:
-                            #Give me the count of tickets which will be breached in 10 hours
                             breached_tickets_count = data[data['Time to Breach(in Hours)'] <= 10].shape[0]
                             If the query given to you is somewhat meaningless also,,try to analyze the important content in the query and generate the response based on the query.
                             For these queries, respond with Python code only, no additional explanations.

@@ -734,7 +734,7 @@ def preprocess_data(csv_data):
 
     # Concatenate the sorted groups back into a single DataFrame
     sorted_data = pd.concat(sorted_groups)
-    print(sorted_data[['Request - ID', 'Historical Status - Change Date', 'Change Datetime']].head(20))
+    # print(sorted_data[['Request - ID', 'Historical Status - Change Date', 'Change Datetime']].head(20))
 
     return sorted_data
 
@@ -840,21 +840,21 @@ def calculate_time_differences(csv_data):
     print("at_calculate_time_difference")
     print(csv_data.shape)
     # print(csv_data[['Request - ID', 'Historical Status - Change Date', 'Change Datetime', 'Change','Historical Status - Status From','Historical Status - Status To']].head(20))
-    print("-------------------------------------------------------")
-    filtered_data = csv_data[csv_data['Request - ID'] == 'A3033017L']
-
-    # Select the required columns
-    required_columns = [
-        'Request - ID',
-        'Historical Status - Change Date',
-        'Change Datetime',
-        'Change',
-        'Historical Status - Status From',
-        'Historical Status - Status To'
-    ]
-
-    # Print the first 20 rows of the filtered data
-    print(filtered_data[required_columns])
+    # print("-------------------------------------------------------")
+    # filtered_data = csv_data[csv_data['Request - ID'] == 'A3033017L']
+    #
+    # # Select the required columns
+    # required_columns = [
+    #     'Request - ID',
+    #     'Historical Status - Change Date',
+    #     'Change Datetime',
+    #     'Change',
+    #     'Historical Status - Status From',
+    #     'Historical Status - Status To'
+    # ]
+    #
+    # # Print the first 20 rows of the filtered data
+    # print(filtered_data[required_columns])
     return csv_data
 
 
@@ -873,9 +873,9 @@ def calculate_sla_breach(csv_data):
 
     csv_data['Breached'] = np.where(csv_data['Total Elapsed Time'] > csv_data['SLA Hours'], 'Yes', 'No')
     csv_data['Final_Status'] = csv_data.groupby('Request - ID')['Historical Status - Status To'].transform('last')
-    print("at_calculate_sla_breach")
-    print(csv_data.head(20))
-    print(csv_data.shape)
+    # print("at_calculate_sla_breach")
+    # print(csv_data.head(20))
+    # print(csv_data.shape)
 
     return csv_data
 
@@ -992,52 +992,100 @@ def sla_query(request):
                 metadata_str = ", ".join(csv_metadata["columns"])
                 print(metadata_str)
 
+                # prompt_eng = (
+                #     f"""
+                #         You are a Python expert focused on answering user queries about data preprocessing. Always strictly adhere to the following rules:
+                #
+                #         1. Data-Related Queries:
+                #             If the query is about data processing, assume the file {df.head(10)} is the data source and contains the following columns: {metadata_str}.
+                #
+                #             Strictly work with the data as it is in the CSV file. Do not perform any implicit conversions (e.g., hours to minutes) unless explicitly requested by the user query.
+                #             Example:
+                #             breached_tickets_count = data[data['Time to Breach(in Hours)'] <= 10].shape[0]
+                #             If the query given to you is somewhat meaningless also,,try to analyze the important content in the query and generate the response based on the query.
+                #             For these queries, respond with Python code only, no additional explanations.
+                #
+                #             If the user asks about the breached tickets don't consider the 'Status' column as breached, always consider the 'Breached' column as Yes.
+                #
+                #             The code should:
+                #             Load {csv_file_path} using pandas.
+                #             Perform operations to directly address the query.
+                #             Exclude plotting, visualization, or other unnecessary steps.
+                #             Include comments for key steps in the code.
+                #             Example:
+                #
+                #             Query: "How can I filter rows where 'Column1' > 100?"
+                #             Response:
+                #             python
+                #             Copy code
+                #             import pandas as pd
+                #
+                #             # Load the dataset
+                #             data = pd.read_csv('{csv_file_path}')
+                #
+                #             # Filter rows where 'Column1' > 100
+                #             filtered_data = data[data['Column1'] > 100]
+                #
+                #             # Output the result
+                #             print(filtered_data)
+                #
+                #         When returning data retrieved from the database, always aim to present it in a **tabular format** for clarity and better readability, if applicable.Generate the response in HTML table format. Use proper <table>, <thead>, <tbody>, <tr>, and <td> tags. Ensure the table structure is well-formed and include the following columns which will be compatable to React.
+                #         If request is asked for tickets or breached tickets or list of tickets , please only mention Ticket,Priority,Assigned To,Allowed Duration,Total Elapsed Time,Time to Breach,Status,Breached in the response within the tabular format.
+                #
+                #         Never reply with: "Understood!" or similar confirmations. Always directly respond to the query following the above rules.
+                #
+                #         User query is {query}.
+                #     """
+                # )
                 prompt_eng = (
                     f"""
-                        You are a Python expert focused on answering user queries about data preprocessing. Always strictly adhere to the following rules:               
+                    You are a Python expert specializing in answering user queries related to data preprocessing. You must adhere strictly to the following rules to ensure accurate responses:
 
-                        1. Data-Related Queries:
-                            If the query is about data processing, assume the file {df.head(3)} is the data source and contains the following columns: {metadata_str}.
+                    1. **Data Handling Guidelines**:
+                        - Assume the dataset used is `{csv_file_path}`, loaded using pandas.
+                        - The dataset preview:  
+                          {df.head(10)}  
+                          Columns available: {metadata_str}.
+                        - Perform operations **directly on the dataset** as it is in the CSV file.
+                        - **Do not make implicit conversions** (e.g., hours to minutes) unless explicitly stated in the query.
+                        - Avoid unnecessary steps like data visualization unless specifically requested.
 
-                            Strictly work with the data as it is in the CSV file. Do not perform any implicit conversions (e.g., hours to minutes) unless explicitly requested by the user query.
-                            Example:
-                            breached_tickets_count = data[data['Time to Breach(in Hours)'] <= 10].shape[0]
-                            If the query given to you is somewhat meaningless also,,try to analyze the important content in the query and generate the response based on the query.
-                            For these queries, respond with Python code only, no additional explanations.
-                            
-                            If the user asks about the breached tickets don't consider the 'Status' column as breached, always consider the 'Breached' column as Yes.
-                            
-                            The code should:
-                            Load {csv_file_path} using pandas.
-                            Perform operations to directly address the query.
-                            Exclude plotting, visualization, or other unnecessary steps.
-                            Include comments for key steps in the code.
-                            Example:
+                    2. **Breached Ticket Conditions**:
+                        - When processing queries related to **breached tickets**, rely **only** on the `'Breached'` column (value must be `'Yes'`).
+                        - **Ignore the `'Status'` column** when determining breached tickets.
 
-                            Query: "How can I filter rows where 'Column1' > 100?"
-                            Response:
-                            python
-                            Copy code
-                            import pandas as pd
+                    3. **Code Structure**:
+                        - Provide only **Python code** as the response (no explanations or additional text).
+                        - Ensure the code:
+                            - Loads `{csv_file_path}` using pandas.
+                            - Implements the required transformations and filters based on the user query.
+                            - Uses comments to indicate key steps.
 
-                            # Load the dataset
-                            data = pd.read_csv('{csv_file_path}')
+                    4. **Tabular Output Format**:
+                        - When responding with retrieved data, **always return it in a structured HTML table format** to ensure clarity and compatibility with React.
+                        - The table should include appropriate `<table>`, `<thead>`, `<tbody>`, `<tr>`, and `<td>` tags.
+                        - If the query relates to **tickets or breached tickets**, the response must only include the following columns:
+                            - Ticket  
+                            - Priority  
+                            - Assigned To  
+                            - Allowed Duration  
+                            - Total Elapsed Time  
+                            - Time to Breach  
+                            - Status  
+                            - Breached  
 
-                            # Filter rows where 'Column1' > 100
-                            filtered_data = data[data['Column1'] > 100]
+                    5. **Download Handling**:
+                        - **Only generate a downloadable CSV file if explicitly requested** in the query.
+                        - If the user requests a download, provide a script that writes the relevant filtered data into a new CSV file, named dynamically as `filtered_data_<timestamp>.csv`, and save it locally into the local system.
 
-                            # Output the result
-                            print(filtered_data)
+                    6. **Response Precision**:
+                        - If the query is ambiguous or lacks clarity, analyze its key components and infer the most relevant information.
+                        - Always strive to **directly** answer the query without unnecessary details.
 
-                        When returning data retrieved from the database, always aim to present it in a **tabular format** for clarity and better readability, if applicable.Generate the response in HTML table format. Use proper <table>, <thead>, <tbody>, <tr>, and <td> tags. Ensure the table structure is well-formed and include the following columns which will be compatable to React.
-                        If request is asked for tickets or breached tickets or list of tickets , please only mention Ticket,Priority,Assigned To,Allowed Duration,Total Elapsed Time,Time to Breach,Status,Breached in the response within the tabular format.
-
-                        Never reply with: "Understood!" or similar confirmations. Always directly respond to the query following the above rules.
-
-                        User query is {query}.
+                    **User Query:** {query}
                     """
                 )
-                print("Prompt from AI:", prompt_eng)
+
                 code = generate_code1(prompt_eng)
                 print("Generated code from AI (Text):")
                 print(code)

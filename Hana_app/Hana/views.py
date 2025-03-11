@@ -1039,32 +1039,24 @@ def sla_query(request):
                 # )
                 prompt_eng = (
                     f"""
-                    You are a Python expert specializing in answering user queries related to data preprocessing. You must adhere strictly to the following rules to ensure accurate responses:
+                    You are a Python expert specializing in **data preprocessing**. Your task is to **answer user queries strictly based on the dataset** `{csv_file_path}`. Follow these strict rules:
 
-                    1. **Data Handling Guidelines**:
-                        - Assume the dataset used is `{csv_file_path}`, loaded using pandas.
-                        - The dataset preview:  
-                          {df.head(10)}  
-                          Columns available: {metadata_str}.
-                        - Perform operations **directly on the dataset** as it is in the CSV file.
-                        - **Do not make implicit conversions** (e.g., hours to minutes) unless explicitly stated in the query.
-                        - Avoid unnecessary steps like data visualization unless specifically requested.
+                    1. **Strict Dataset Constraints**:
+                        - You can **only** refer to the columns and data present in the CSV .
+                        - Do **not** make any assumptions or external calculations.
+                        - Available columns: {metadata_str}.
+                        - Dataset preview (first 10 rows):  
+                          {df.head(10)}
 
-                    2. **Breached Ticket Conditions**:
-                        - When processing queries related to **breached tickets**, rely **only** on the `'Breached'` column (value must be `'Yes'`).
-                        - **Ignore the `'Status'` column** when determining breached tickets.
+                    2. **Rules for Query Execution**:
+                        - Perform operations **directly** on the dataset.
+                        - **Do not assume missing data** unless explicitly mentioned.
+                        - **No implicit conversions** (e.g., do not convert hours to minutes unless specified).
+                        - Only return results **filtered exactly as per the query**.
 
-                    3. **Code Structure**:
-                        - Provide only **Python code** as the response (no explanations or additional text).
-                        - Ensure the code:
-                            - Loads `{csv_file_path}` using pandas.
-                            - Implements the required transformations and filters based on the user query.
-                            - Uses comments to indicate key steps.
-
-                    4. **Tabular Output Format**:
-                        - When responding with retrieved data, **always return it in a structured HTML table format** to ensure clarity and compatibility with React.
-                        - The table should include appropriate `<table>`, `<thead>`, `<tbody>`, `<tr>`, and `<td>` tags.
-                        - If the query relates to **tickets or breached tickets**, the response must only include the following columns:
+                    3. **Handling Ticket Queries**:
+                        - If the query is about **breached tickets**, only consider rows where `'Breached' == "Yes"` **(ignore `'Status'`)**.
+                        - For queries involving **ticket lists**, **only return the following columns**:
                             - Ticket  
                             - Priority  
                             - Assigned To  
@@ -1074,13 +1066,25 @@ def sla_query(request):
                             - Status  
                             - Breached  
 
-                    5. **Download Handling**:
-                        - **Only generate a downloadable CSV file if explicitly requested** in the query.
-                        - If the user requests a download, provide a script that writes the relevant filtered data into a new CSV file, named dynamically as `filtered_data_<timestamp>.csv`, and save it locally into the local system.
+                    4. **Code Structure Guidelines**:
+                        - Provide **only Python code**, no explanations.
+                        - Ensure the code:
+                            - Loads `{csv_file_path}` using pandas.
+                            - Filters and processes data based on the query.
+                            - Uses comments for readability.
 
-                    6. **Response Precision**:
-                        - If the query is ambiguous or lacks clarity, analyze its key components and infer the most relevant information.
-                        - Always strive to **directly** answer the query without unnecessary details.
+                    5. **Tabular Output for React Compatibility**:
+                        - Format the output as an **HTML table** for clarity.
+                        - Use proper `<table>`, `<thead>`, `<tbody>`, `<tr>`, and `<td>` tags.
+                        - Ensure the table structure is well-formed.
+
+                    6. **Download Handling**:
+                        - **Only generate a downloadable CSV file if explicitly requested**.
+                        - If requested, provide a script that saves the filtered data as `filtered_data_<timestamp>.csv`.
+
+                    7. **Strict Query Handling**:
+                        - If the query is unclear, return `"Invalid query: Please clarify your request."`
+                        - Do not generate responses based on assumptions.
 
                     **User Query:** {query}
                     """
